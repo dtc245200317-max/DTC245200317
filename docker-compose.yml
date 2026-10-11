@@ -45,5 +45,26 @@ services:
       - frontend
     depends_on:
       - phpmyadmin
+  # 4. Giam sat Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: gym_prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - backend
+    user: "nobody" # Hardening: Chạy bằng quyền non-root
+
+  # 5. Dashboard Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: gym_grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - frontend
+      - backend
+    depends_on:
+      - prometheus
 volumes:
-  db_data:
+   db_data:
