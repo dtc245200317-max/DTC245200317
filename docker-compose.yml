@@ -1,0 +1,49 @@
+version: '3.8'
+
+networks:
+  frontend:
+  backend:
+    internal: true # Hardening: Chặn truy cập trực tiếp từ internet vào DB
+
+services:
+  # 1. Cơ sở dữ liệu MySQL
+  db:
+    image: mysql:8.0
+    container_name: gym_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: "StrongPassword!@#2026" # Hardening: Mật khẩu mạnh
+      MYSQL_DATABASE: gym_management
+    networks:
+      - backend
+    volumes:
+      - db_data:/var/lib/mysql
+
+  # 2. Công cụ quản lý Database (phpMyAdmin)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: gym_pma
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: db
+      MYSQL_ROOT_PASSWORD: "StrongPassword!@#2026"
+    networks:
+      - frontend
+      - backend
+    depends_on:
+      - db
+  # 3. Nginx Reverse Proxy
+  nginx:
+    image: nginx:latest
+    container_name: gym_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - frontend
+    depends_on:
+      - phpmyadmin
+volumes:
+  db_data:
