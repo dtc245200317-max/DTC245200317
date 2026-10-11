@@ -66,5 +66,28 @@ services:
       - backend
     depends_on:
       - prometheus
+    # 6. Máy chủ Log - Loki
+  loki:
+    image: grafana/loki:latest
+    container_name: gym_loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki/loki-config.yaml:/etc/loki/local-config.yaml
+    networks:
+      - backend
+    user: "root" # Chạy quyền root để tránh lỗi ghi file của Loki
+
+  # 7. Đặc vụ thu thập Log - Promtail
+  promtail:
+    image: grafana/promtail:latest
+    container_name: gym_promtail
+    volumes:
+      - /var/log:/var/log:ro
+      - ./promtail/promtail-config.yaml:/etc/promtail/config.yml
+    networks:
+      - backend
+    depends_on:
+      - loki
 volumes:
    db_data:
