@@ -1,4 +1,4 @@
-# Đồ án: Triển khai Hệ thống Web & Giám sát với Docker
+# Hệ thống Quản lý Phòng Gym / Fitness
 **Sinh viên thực hiện:** Poòng Văn Hoa
 **Mã số SV:** DTC245200317
 
