@@ -2,41 +2,48 @@ version: '3.8'
 
 networks:
   frontend:
+    driver: bridge
   backend:
-    internal: true # Hardening: Chặn truy cập trực tiếp từ internet vào DB
+    driver: bridge
 
 services:
-  # 1. Cơ sở dữ liệu MySQL
   db:
     image: mysql:8.0
     container_name: gym_db
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: "StrongPassword!@#2026" # Hardening: Mật khẩu mạnh
+      MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: gym_management
     networks:
       - backend
-    volumes:
-      - db_data:/var/lib/mysql
 
-  # 2. Công cụ quản lý Database (phpMyAdmin)
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     container_name: gym_pma
+    restart: always
     ports:
       - "8081:80"
     environment:
       PMA_HOST: db
-      MYSQL_ROOT_PASSWORD: "StrongPassword!@#2026"
+    networks:
+      - backend
+
+  web:
+    build: .
+    container_name: gym_web
+    restart: always
+    ports:
+      - "8080:3000"
+    depends_on:
+      - db
     networks:
       - frontend
       - backend
-    depends_on:
-      - db
-  # 3. Nginx Reverse Proxy
+
   nginx:
     image: nginx:latest
     container_name: gym_nginx
+    restart: always
     ports:
       - "80:80"
     volumes:
@@ -45,20 +52,26 @@ services:
       - frontend
     depends_on:
       - phpmyadmin
-  # 4. Giam sat Prometheus
+
   prometheus:
     image: prom/prometheus:latest
     container_name: gym_prometheus
+    restart: always
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
       - backend
-    user: "nobody" # Hardening: Chạy bằng quyền non-root
+    user: "nobody"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  # 5. Dashboard Grafana
   grafana:
     image: grafana/grafana:latest
     container_name: gym_grafana
+    restart: always
     ports:
       - "3000:3000"
     networks:
@@ -66,28 +79,28 @@ services:
       - backend
     depends_on:
       - prometheus
-    # 6. Máy chủ Log - Loki
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   loki:
     image: grafana/loki:latest
     container_name: gym_loki
+    restart: always
     ports:
       - "3100:3100"
-    volumes:
-      - ./loki/loki-config.yaml:/etc/loki/local-config.yaml
     networks:
       - backend
-    user: "root" # Chạy quyền root để tránh lỗi ghi file của Loki
 
-  # 7. Đặc vụ thu thập Log - Promtail
   promtail:
-    image: grafana/promtail:latest
-    container_name: gym_promtail
-    volumes:
-      - /var/log:/var/log:ro
-      - ./promtail/promtail-config.yaml:/etc/promtail/config.yml
-    networks:
-      - backend
-    depends_on:
-      - loki
-volumes:
-   db_data:
+     image: grafana/promtail:latest
+     container_name: gym_promtail
+     restart: always
+     volumes:
+       - /var/log:/var/log
+       - /var/lib/docker/containers:/var/lib/docker/containers:ro
+       - ./promtail-config.yml:/etc/promtail/config.yml
+     networks:
+       - backend
